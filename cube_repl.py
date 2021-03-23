@@ -83,6 +83,7 @@ class CubeRepl:
             self.command_parser = compile_parser(grammar)
 
         self.command = "help"
+        self.command_list = ["help"]
         self.arguments = []
         self.exit = False
         self.verbose = False
@@ -123,19 +124,19 @@ class CubeRepl:
             user_input = input("> ")
             if user_input == "":
                 try:
-                    self.execute_previous_command()
+                    self.execute_previous_command_list()
                 except CubeError as e:
                     self.print_cube_error(e)
                 continue
             try:
-                command_list = self.command_parser.parse(user_input,
+                self.command_list = self.command_parser.parse(user_input,
                                                          rule_name="start")
             except exceptions.FailedParse:
                 print("Hm, that command didn't match my command grammar. "
                       "Try 'help', I guess?")
             else:
                 try:
-                    self.execute_command_list(command_list)
+                    self.execute_command_list(self.command_list)
                 except CubeError as e:
                     self.print_cube_error(e)
 
@@ -226,18 +227,21 @@ class CubeRepl:
         in `command_list`.
 
         """
-        for command_tree in command_list:
-            self.execute_command(command_tree)
+        for command in command_list:
+            self.execute_command(command)
 
-    def execute_previous_command(self):
-        """Execute the previous command."""
-        self.execute_command(None)
+    def execute_previous_command_list(self):
+        """Execute the previous list of commands."""
+        self.execute_command_list(self.command_list)
 
     def print_help(self):
         """Print known_commands in a helpful way."""
         for key, value in self.known_commands.items():
             print(f"{key}: {value[0]}")
             print(f"  Example usage: {value[1]}")
+        print("You can put more than one command together in a line."
+              + "\n  Example: command1 command2 command3")
+        print("Hit enter to repeat the previous list of commands.")
 
     def toggle_verbose(self):
         """Turn verbose mode on or off."""
