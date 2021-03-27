@@ -127,37 +127,57 @@ class VertexSet:
         for location, vertex in enumerate(vertices):
             self.vertices[function(location)]=vertex
 
-    def rotate(self, rotation_list):
+    def map_to_locations_not_colors(self, function):
+        """Rearrange the vertices by sending each from
+        location to function(location), but leave colors where
+        they are.
+
+        As with `map_to_locations`, this `function` will mess up
+        your vertex list unless it's a bijection on indices of
+        the vertex list.
+
+        """
+        vertices = self.vertices.copy()
+        color_mapping = dict()
+        for location, vertex in enumerate(vertices):
+            new_location = function(location)
+            color_mapping[location] = vertex.color_string
+            self.vertices[new_location] = vertex
+        for location, color_string in color_mapping.items():
+            self.color_by_location(location, color_string)
+
+    def rotate(self, rotation_list, preserve_colors=False):
         """Permute the bits of every vertex by `rotation_list`, which is a
         list of indices.
+
+        If `preserve_colors` is True, then colors don't follow
+        vertices around: they stay where they are.
 
         """
         def permute_bits(location):
             return bits.permute_bits_by_index_list(location,
                                                    rotation_list,
                                                    self.dimension)
-        self.map_to_locations(permute_bits)
+        if preserve_colors:
+            self.map_to_locations_not_colors(permute_bits)
+        else:
+            self.map_to_locations(permute_bits)
 
-    def reflect(self, bit_mask):
-        """Flip the bits of every vertex by `bit_mask`."""
+    def reflect(self, bit_mask, preserve_colors=False):
+        """Flip the bits of every vertex by `bit_mask`.
+
+        If `preserve_colors` is True, then colors don't follow
+        vertices around: they stay where they are.
+
+        """
         bit_mask = bits.truncate_within_dimension(bit_mask, self.dimension)
         def flip_function(location):
             return location ^ bit_mask
-        self.map_to_locations(flip_function)
 
-    def reflect_preserving_colors(self, bit_mask):
-        """Flip the bits of every vertex by `bit_mask`, but keep colors
-        where they are.
-
-        """
-        vertices = self.vertices.copy()
-        color_mapping = dict()
-        for location, vertex in enumerate(vertices):
-            new_location = location ^ bit_mask
-            color_mapping[location] = vertex.color_string
-            self.vertices[new_location] = vertex
-        for location, color_string in color_mapping.items():
-            self.color_by_location(location, color_string)
+        if preserve_colors:
+            self.map_to_locations_not_colors(flip_function)
+        else:
+            self.map_to_locations(flip_function)
 
     def reset_positions(self):
         """Reset the positions of all the vertices."""
@@ -300,26 +320,25 @@ class Cube:
         self.vertex_set = VertexSet(self.dimension)
         self.edge_set = EdgeSet(self.vertex_set)
 
-    def rotate(self, rotation_list):
+    def rotate(self, rotation_list, preserve_colors=False):
         """Rotate the cube by permuting the bits of every vertex by the
         given rotation_list.
 
-        """
-        self.vertex_set.rotate(rotation_list)
+        If `preserve_colors` is True, the rotation won't change
+        the position of the colors.
 
-    def reflect(self, bit_mask):
+        """
+        self.vertex_set.rotate(rotation_list, preserve_colors)
+
+    def reflect(self, bit_mask, preserve_colors=False):
         """Reflect the cube by flipping the bits of every vertex using
         the given bit_mask.
 
-        """
-        self.vertex_set.reflect(bit_mask)
-
-    def reflect_preserving_colors(self, bit_mask):
-        """Reflect the cube by flipping the bits of every vertex using
-        the given bit_mask, but keep colors as they are.
+        If `preserve_colors` is True, the reflection won't change
+        the position of the colors.
 
         """
-        self.vertex_set.reflect_preserving_colors(bit_mask)
+        self.vertex_set.reflect(bit_mask, preserve_colors)
 
     def reset_positions(self):
         """Reset the positions of all vertices in the cube."""

@@ -9,8 +9,6 @@ from cube_repl import CubeRepl, CubeError
 from qiskit import QuantumCircuit, Aer, assemble
 from colorama import Fore, Back, Style
 
-
-
 STATEVECTOR_SIMULATOR = Aer.get_backend("statevector_simulator")
 
 GRAMMAR = r'''
@@ -91,11 +89,20 @@ class CircuitRepl:
             }
 
         self.cube_repl.add_command("circuit", "Make a new circuit.",
-                                   "circuit 4", self.new_circuit)
+                                   ["circuit 4"], self.new_circuit)
         self.cube_repl.add_command("back", "Remove the last-added gate.",
-                                   "back", self.back)
+                                   ["back"], self.back)
         self.cube_repl.add_command("add", "Add a circuit.",
-                                   "add cx 0 2", self.add)
+                                   ["add cx 0 2",
+                                    "add x 1",
+                                    "add y 2",
+                                    "add z 0",
+                                    "add h 3",
+                                    "add t 4",
+                                    "add tdg 4",
+                                    "add s 2",
+                                    "add sdg 2",
+                                    "add i 0"], self.add)
 
     def new_circuit(self):
         """Replace `circuit` with a new quantum circuit, with the number

@@ -2,7 +2,7 @@
 hypercubes."""
 
 from cubes import Cube
-from colorama import Fore, Back
+from colorama import Fore, Back, Style
 from tatsu import compile as compile_parser, exceptions
 import bits
 
@@ -19,8 +19,8 @@ GRAMMAR = r'''
         | 'new' dimension
         | 'color' coloroptions color
         | 'uncolor' coloroptions
-        | 'reflect' bitstring
-        | 'rotate' rotationlist
+        | 'reflect' bitstring ['preserve' 'colors']
+        | 'rotate' rotationlist ['preserve' 'colors']
         | 'reset'
         | 'help'
         | 'exit'
@@ -93,27 +93,37 @@ class CubeRepl:
         self.after_drawing_hooks  = []
 
         # Obligatory commands
-        self.add_command("help", "Print a help message.", "help",
+        self.add_command("help", "Print a help message.", ["help"],
                          self.print_help)
-        self.add_command("exit", "Quit.", "exit",
+        self.add_command("exit", "Quit.", ["exit"],
                          self.exit_command)
-        self.add_command("verbose", "Turn on verbose mode for more detail.",
-                         "verbose", self.toggle_verbose)
+        self.add_command("verbose", "Turn on verbose mode.",
+                         ["verbose"], self.toggle_verbose)
 
         if grammar is None:
             # Less obligatory commands
             self.add_command("new", "Create a new cube of the given dimension.",
-                             "new", self.new_cube)
+                             ["new 3"], self.new_cube)
             self.add_command("reflect", "Reflect the cube by flipping bits.",
-                             "reflect 011101", self.reflect)
+                             ["reflect 011101 preserve colors",
+                              "reflect 111111"], self.reflect)
             self.add_command("rotate", "Rotate the cube by permuting bits.",
-                             "rotate 3 1 2 0", self.rotate)
+                             ["rotate 3 1 2 0 preserve colors",
+                              "rotate 0 2 1 3"], self.rotate)
             self.add_command("reset", "Reset the positions of all vertices.",
-                             "reset", self.reset_positions)
+                             ["reset"], self.reset_positions)
             self.add_command("color", "Color some element of the cube.",
-                             "color 1010 red", self.color)
+                             ["color 1010 0111 red",
+                              "color subcube **1*0 yellow",
+                              "color between 1010 1011 1111 blue",
+                              "color ***** magenta"],
+                             self.color)
             self.add_command("uncolor", "Uncolor some element of the cube.",
-                             "uncolor 1****", self.uncolor)
+                             ["uncolor 10***",
+                              "uncolor subcube *****",
+                              "uncolor 11000 00000 01010",
+                              "uncolor between ***10",
+                              "uncolor between 01111 01110 01011"], self.uncolor)
 
     def run(self):
         """Run the REPL."""
@@ -163,13 +173,13 @@ class CubeRepl:
     # ======================
 
     def add_command(self, command_name, description,
-                    example,
+                    example_list,
                     function_to_execute):
         """Add `command_name` to the dictionary `self.known_commands`,
         with the value
 
-        (`description`, # a string describing the function's behavior
-         `example`,     # an example of usage
+        (`description`,  # a string describing the function's behavior
+         `example_list`, # a list of samples of usage
          `function_to_execute`).
 
         If a function needs arguments, it takes them from
@@ -177,7 +187,7 @@ class CubeRepl:
 
         """
         self.known_commands[command_name] = (description,
-                                             example,
+                                             example_list,
                                              function_to_execute)
 
     def update_command_and_arguments(self, command_tree):
@@ -237,11 +247,16 @@ class CubeRepl:
     def print_help(self):
         """Print known_commands in a helpful way."""
         for key, value in self.known_commands.items():
-            print(f"{key}: {value[0]}")
-            print(f"  Example usage: {value[1]}")
-        print("You can put more than one command together in a line."
+            behavior = value[0]
+            example_list = value[1]
+            print(f"{Style.BRIGHT+Fore.RED}{key}{Style.RESET_ALL}: {behavior}")
+            for usage_string in example_list:
+                print(f"  Example: {usage_string}")
+        print(f"You can {Style.BRIGHT + Fore.RED}put more than one command "
+              + f"together{Style.RESET_ALL} in a line."
               + "\n  Example: command1 command2 command3")
-        print("Hit enter to repeat the previous list of commands.")
+        print(f"Hit {Style.BRIGHT + Fore.RED}enter{Style.RESET_ALL} "
+              + "to repeat the previous line of commands.")
 
     def toggle_verbose(self):
         """Turn verbose mode on or off."""
@@ -275,6 +290,7 @@ class CubeRepl:
         if self.cube.dimension == 0:
             raise CubeError("You can't reflect a zero-dimensional cube!")
         bit_string = self.arguments[0]
+        preserve_colors = bool(len(self.arguments) > 1)
 
         if len(bit_string) != self.cube.dimension:
             raise CubeError("Bit string is the wrong length.")
@@ -286,7 +302,7 @@ class CubeRepl:
             raise CubeError("The bit string should be a string of 1 and 0. "
                             + "Try 'help' for usage.")
 
-        self.cube.reflect(bit_mask)
+        self.cube.reflect(bit_mask, preserve_colors)
 
     def rotate(self):
         """Rotate `self.cube` with a rotation list given in
@@ -298,6 +314,7 @@ class CubeRepl:
         if self.cube.dimension == 0:
             raise CubeError("That's not going to do anything.")
         rotation_list = self.arguments[0]
+        preserve_colors = bool(len(self.arguments) > 1)
 
         indices = list(map(int, rotation_list))
         dimension = self.cube.dimension
@@ -317,7 +334,7 @@ class CubeRepl:
                             + f"all indices from 0 to {dimension - 1}, "
                             + "and nothing else.")
 
-        self.cube.rotate(indices)
+        self.cube.rotate(indices, preserve_colors)
 
     def reset_positions(self):
         """Reset the position of all vertices in `self.cube`,
