@@ -54,7 +54,7 @@ def color_edges(q_string, edge_set):
             raise ValueError(f"The edge {(low_index, high_index)} "
                              +"doesn't exist.")
         result = result.replace(f"({low_index}{edge_string}{high_index})",
-                                f"{edge_color}{edge_string}{Style.RESET_ALL}")
+                                f"{edge_color+Style.BRIGHT}{edge_string}{Style.RESET_ALL}")
     return result
 
 def format_vertices(q_string, vertex_set):
